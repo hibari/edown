@@ -5,13 +5,9 @@
 * [Function Details](#functions)
 
 
-
-
-
-
 Copyright (c) 2010 Erlang Solutions Ltd
 
-__Authors:__ Ulf Wiger ([`ulf.wiger@erlang-solutions.com`](mailto:ulf.wiger@erlang-solutions.com)).<a name="index"></a>
+__Authors:__ Ulf Wiger ([`ulf@wiger.net`](mailto:ulf@wiger.net)).<a name="index"></a>
 
 ##Function Index##
 
@@ -28,15 +24,11 @@ __Authors:__ Ulf Wiger ([`ulf.wiger@erlang-solutions.com`](mailto:ulf.wiger@erla
 ###'#element#'/5##
 
 
-
-
 `#element#(Tag, Data, Attrs, Parents, E) -> any()`
 
 <a name="%23root%23-4"></a>
 
 ###'#root#'/4##
-
-
 
 
 `#root#(Data, Attrs, X3, E) -> any()`
@@ -46,15 +38,11 @@ __Authors:__ Ulf Wiger ([`ulf.wiger@erlang-solutions.com`](mailto:ulf.wiger@erla
 ###'#text#'/1##
 
 
-
-
 `#text#(Text) -> any()`
 
 <a name="%23xml-inheritance%23-0"></a>
 
 ###'#xml-inheritance#'/0##
-
-
 
 
 `#xml-inheritance#() -> any()`

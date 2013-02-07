@@ -13,10 +13,12 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%==============================================================================
-%% @author Ulf Wiger <ulf.wiger@erlang-solutions.com>
-%% @copyright 2010 Erlang Solutions Ltd 
+%% @author Ulf Wiger <ulf@wiger.net>
+%% @copyright 2010 Erlang Solutions Ltd
 %% @end
-%% =====================================================================
+%% =============================================================================
+%% Modified 2012 by Beads Land-Trujillo:  '#text#'/1, brstrip/1
+%% =============================================================================
 
 %% Description  : Callback module for exporting XML to Markdown.
 
@@ -41,7 +43,7 @@
 %% The '#text#' function is called for every text segment.
 
 '#text#'(Text) ->
-    to_string(Text).
+    brstrip(to_string(Text)).
 
 to_string(S) ->
     binary_to_list(iolist_to_binary([S])).
@@ -50,11 +52,13 @@ strip(Str) -> lstrip(rstrip(Str)).
 lstrip(Str) -> re:replace(Str,"^\\s","",[]).
 rstrip(Str) -> re:replace(Str, "\\s\$", []).
 
+% Strip double spaces at end of line -- markdown reads as hard return.
+brstrip(Str) -> re:replace(Str, "\\s+\\s\$", "", [global, multiline]).
 
 %% The '#root#' tag is called when the entire structure has been
 %% exported. It does not appear in the structure itself.
 
-'#root#'(Data, Attrs, [], _E) -> 
+'#root#'(Data, Attrs, [], _E) ->
     case find_attribute(header, Attrs) of
 	{value, Hdr} ->
 	    [lists:flatten(io_lib:fwrite("HEADER: ~p~n", [Hdr])), Data];
@@ -69,7 +73,19 @@ rstrip(Str) -> re:replace(Str, "\\s\$", []).
 %% sure that the scope of a markup is not extended by mistake.)
 
 '#element#'('pre_pre', Data, Attrs, Parents, E) ->
-    '#element#'(pre, escape_pre(Data), Attrs, Parents, E);
+    case re:run(Data, "<a href=", []) of
+	{match, _} ->
+	    '#element#'(pre, Data, Attrs, Parents, E);
+	nomatch ->
+	    '#element#'(pre, escape_pre(Data), Attrs, Parents, E)
+    end;
+'#element#'('esc_tt', Data, Attrs, Parents, E) ->
+    case within_html(Parents) of
+	true ->
+	    '#element#'(tt, escape_pre(Data), Attrs, Parents, E);
+	false ->
+	    '#element#'(tt, Data, Attrs, Parents, E)
+    end;
 '#element#'('pre', Data, Attrs, Parents, E) ->
     xmerl_html:'#element#'('pre', Data, Attrs, Parents, E);
 '#element#'('div', Data, _, _Parents, _E) ->
@@ -158,7 +174,18 @@ md_elem(Tag, Data, Attrs, Parents, E) ->
 	em    -> ["_", no_nl(Data), "_"];
 	i     -> ["_", no_nl(Data), "_"];
 	tt    -> ["`", no_nl(Data), "`"];
-	code  -> ["`", no_nl(Data), "`"];
+	code  ->
+	    %% edoc_macros.erl hard-codes expansion of the {@type ...} macro
+	    %% as a HTML href inside <code>...</code>
+	    case re:run(Data, "<a href=", []) of
+		{match,_} ->
+		    %% ["<code>", no_nl(Data), "</code>"];
+		    ["<code>", no_nl(Data), "</code>"];
+		_ ->
+		    %% ["`", no_nl(Data), "`"]
+		    %% Don't strip newlines here, as it messes up the specs
+		    ["`", Data, "`"]
+	    end;
 	dl    -> Data;
 	dt    -> html_elem(dt, Data, Attrs, Parents, E);
 	dd    -> html_elem(dd, Data, Attrs, Parents, E);
@@ -178,6 +205,8 @@ md_elem(Tag, Data, Attrs, Parents, E) ->
 
 within_html(Tags) ->
     lists:any(fun({pre,_}) -> true;
+		 ({pre_pre,_}) -> true;
+		 ({code,_}) -> true;
 		 ({T,_}) -> needs_html(T)
 	      end, Tags).
 
@@ -200,7 +229,3 @@ no_nl(S) ->
 %%     integer_to_list(V);
 %% a_val(V) ->
 %%     V.
-
-
-
-
