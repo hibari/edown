@@ -1,8 +1,9 @@
-.project
-.settings/
-.eunit/
-ebin/
-*~
-*/*~
 #*#
 */#*#
+*/*~
+*~
+.eunit/
+.project
+.qc
+.settings/
+ebin/
