@@ -5,8 +5,6 @@
 * [Function Details](#functions)
 
 
-
-
 <a name="index"></a>
 
 ##Function Index##
@@ -24,12 +22,8 @@
 ###from_script/1##
 
 
-
-
 <pre>from_script(Config::ConfigFile) -&gt; ok | {error, Reason}</pre>
 <br></br>
-
-
 
 
 
@@ -47,12 +41,8 @@ This function does not manage dependencies. It is simply a wrapper around
 ###main/1##
 
 
-
-
-<pre>main(Args::[Config]) -&gt; [no_return()](#type-no_return)</pre>
+<pre>main(Args::[Config]) -&gt; no_return()</pre>
 <br></br>
-
-
 
 
 
@@ -65,19 +55,19 @@ Usage: edown_make -config ConfigFile [-pa P] [-pz P]
 
 
 
-Calls [from_script(ConfigFile)](#from_script-1) and then terminates,  
+Calls [from_script(ConfigFile)](#from_script-1) and then terminates,
 with a normal or non-normal exit code, depending on the outcome.
 
 
 
 Make sure `$EDOWN/edown_make` is runnable, and in the command path, and
 that the edown BEAM files are in the Erlang path (e.g. using $ERL_LIBS).
-The `edown_make` escript also accepts `-pa P` and/or `-pz P` flags as a  
+The `edown_make` escript also accepts `-pa P` and/or `-pz P` flags as a
 means of locating the edown byte code.
 
 
 
-Note, however, that the function `edoc_make:main/1` only expects the  
+Note, however, that the function `edoc_make:main/1` only expects the
 config file as an input argument, corresponding to
 
 

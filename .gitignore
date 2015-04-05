@@ -1,6 +1,10 @@
-.eunit/
-ebin/
-*~
-*/*~
 #*#
 */#*#
+*/*~
+*~
+.eunit/
+.rebar/
+.project
+.qc
+.settings/
+ebin/

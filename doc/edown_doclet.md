@@ -8,11 +8,9 @@
 
 EDoc Doclet module for producing Markdown.
 
-
-
 Copyright (c) 2010 Erlang Solutions Ltd
 
-__Authors:__ Ulf Wiger ([`ulf.wiger@erlang-solutions.com`](mailto:ulf.wiger@erlang-solutions.com)).<a name="index"></a>
+__Authors:__ Ulf Wiger ([`ulf@wiger.net`](mailto:ulf@wiger.net)).<a name="index"></a>
 
 ##Function Index##
 
@@ -29,12 +27,8 @@ __Authors:__ Ulf Wiger ([`ulf.wiger@erlang-solutions.com`](mailto:ulf.wiger@erla
 ###run/2##
 
 
-
-
-<pre>run(Command::[doclet_gen()](#type-doclet_gen) | [doclet_toc()](#type-doclet_toc), Ctxt::[edoc_context()](#type-edoc_context)) -&gt; ok</pre>
+<pre>run(Command::<a href="#type-doclet_gen">doclet_gen()</a> | <a href="#type-doclet_toc">doclet_toc()</a>, Ctxt::<a href="#type-edoc_context">edoc_context()</a>) -> ok</pre>
 <br></br>
-
-
 
 
 
@@ -44,7 +38,7 @@ Main doclet entry point.
 
 
 Also see [`//edoc/edoc:layout/2`](http://www.erlang.org/doc/man/edoc.html#layout-2) for layout-related options, and
-[`//edoc/edoc:get_doc/2`](http://www.erlang.org/doc/man/edoc.html#get_doc-2) for options related to reading source  
+[`//edoc/edoc:get_doc/2`](http://www.erlang.org/doc/man/edoc.html#get_doc-2) for options related to reading source
 files.
 
 Options:
