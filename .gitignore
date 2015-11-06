@@ -3,6 +3,7 @@
 */*~
 *~
 .eunit/
+.rebar/
 .project
 .qc
 .settings/
