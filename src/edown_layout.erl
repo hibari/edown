@@ -1,5 +1,5 @@
 %%==============================================================================
-%% Copyright 2010 Erlang Solutions Ltd.
+%% Copyright 2014 Ulf Wiger
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 %% limitations under the License.
 %%==============================================================================
 %% @author Ulf Wiger <ulf@wiger.net>
-%% @copyright 2010 Erlang Solutions Ltd
+%% @copyright 2014 Ulf Wiger
 %% @end
 %% =====================================================================
 
@@ -90,9 +90,7 @@
 
 module(Element, Options) ->
     XML = layout_module(Element, init_opts(Element, Options)),
-    Export = proplists:get_value(xml_export, Options,
-				 ?DEFAULT_XML_EXPORT),
-    xmerl:export_simple(XML, Export, []).
+    edown_lib:export(XML, Options).
 
 % Put layout options in a data structure for easier access.
 
@@ -123,7 +121,7 @@ init_opts(Element, Options) ->
 	"" ->
 	    R;  % don't use any stylesheet
 	S when is_list(S) ->
-	    R#opts{stylesheet = S}; 
+	    R#opts{stylesheet = S};
 	_ ->
 	    report("bad value for option `stylesheet'.", []),
 	    exit(error)
@@ -185,9 +183,7 @@ layout_module(#xmlElement{name = module, content = Es}=E, Opts) ->
     Body = ([]   % navigation("top")
             ++ [{h1, Title}]
 	    ++ doc_index(FullDesc, Functions, Types)
-	    ++ [{p,[]}]
-	    ++ ShortDesc
-	    ++ [{p,[]}]
+	    ++ [{p, ShortDesc}]
 	    ++ copyright(Es)
 	    ++ deprecated(Es, "module")
 	    ++ version(Es)
@@ -219,11 +215,10 @@ layout_module(#xmlElement{name = module, content = Es}=E, Opts) ->
     %% 	    io:fwrite("not edown_doclet (~p)~n", [Name])
     %% end,
     %% xhtml(Title, stylesheet(Opts), Body).
-    Res = to_simple(markdown(Title, stylesheet(Opts), Body)),
-    Res.
+    to_simple(markdown(Title, stylesheet(Opts), Body)).
 
-%% This function is a workaround for a bug in xmerl_lib:expand_content/1 that 
-%% causes it to lose track of the parents if #xmlElement{} records are 
+%% This function is a workaround for a bug in xmerl_lib:expand_content/1 that
+%% causes it to lose track of the parents if #xmlElement{} records are
 %% encountered in the structure.
 %%
 to_simple([#xmlElement{name = Name, attributes = Attrs, content = Content}|T]) ->
@@ -263,7 +258,7 @@ to_simple_attrs(As) ->
     [{K,V} || #xmlAttribute{name = K, value = V} <- As].
 
 normalize_text(Text) ->
-    try normalize(binary_to_list(list_to_binary(Text)))
+    try normalize(Text)
     catch
 	error:_ ->
 	    lists:flatten(io_lib:fwrite("~p", [Text]))
@@ -281,7 +276,7 @@ normalize1([]) ->
     [].
 
 to_string(S) ->
-    binary_to_list(iolist_to_binary([S])).
+    unicode:characters_to_list([S]).
 
 module_params(Es) ->
     As = [{get_text(argName, Es1),
@@ -298,7 +293,7 @@ module_params(Es) ->
 %% 			     [edoc_lib:datestr(date()),
 %% 			      edoc_lib:timestr(time())])
 %% 	      ]}]}].
- 
+
 stylesheet(Opts) ->
     case Opts#opts.stylesheet of
 	undefined ->
@@ -479,7 +474,7 @@ label_anchor(Content, E) ->
 
 %% This is currently only done for functions without type spec.
 
-signature(Es, Name) -> 
+signature(Es, Name) ->
     [{tt, [Name, "("] ++ seq(fun arg/1, Es) ++ [") -> any()"]}].
 
 arg(#xmlElement{content = Es}) ->
@@ -605,7 +600,7 @@ pp_clause(Pre, Type) ->
     L1 = erl_pp:attribute({attribute,0,spec,{{list_to_atom(Atom),0},[Types]}}),
     "-spec " ++ L2 = lists:flatten(L1),
     L3 = Pre ++ lists:nthtail(length(Atom), L2),
-    re:replace(L3, "\n      ", "\n", [{return,list},global]).
+    re:replace(L3, "\n      ", "\n", [{return,list},global,unicode]).
 
 format_type(Prefix, Name, Type, Last, #opts{pretty_printer = erl_pp}=Opts) ->
     try
@@ -628,7 +623,7 @@ pp_type(Prefix, Type) ->
                  "::\n" ++ L3 -> {"\n"++L3,6}
              end,
     Ss = lists:duplicate(N, $\s),
-    re:replace(L2, "\n"++Ss, "\n", [{return,list},global]).
+    re:replace(L2, "\n"++Ss, "\n", [{return,list},global,unicode]).
 
 etypef(L, O0) ->
     {R, O} = etypef(L, [], O0, []),
@@ -894,6 +889,10 @@ t_type([#xmlElement{name = nonempty_list, content = Es}]) ->
     t_nonempty_list(Es);
 t_type([#xmlElement{name = tuple, content = Es}]) ->
     t_tuple(Es);
+t_type([#xmlElement{name = map, content = Es}]) ->
+    t_map(Es);
+t_type([#xmlElement{name = map_field, content=Es}]) ->
+    t_map_field(Es);
 t_type([#xmlElement{name = 'fun', content = Es}]) ->
     ["fun("] ++ t_fun(Es) ++ [")"];
 t_type([E = #xmlElement{name = record, content = Es}]) ->
@@ -901,7 +900,9 @@ t_type([E = #xmlElement{name = record, content = Es}]) ->
 t_type([E = #xmlElement{name = abstype, content = Es}]) ->
     t_abstype(E, Es);
 t_type([#xmlElement{name = union, content = Es}]) ->
-    t_union(Es).
+    t_union(Es);
+t_type([#xmlElement{name = type} = K, #xmlElement{name = type} = V]) ->
+    t_map_field([K,V]).
 
 t_var(E) ->
     [get_attrval(name, E)].
@@ -1057,8 +1058,7 @@ type(E) ->
 
 type(E, Ds) ->
     Opts = [],
-    xmerl:export_simple_content(t_utype_elem(E) ++ local_defs(Ds, Opts),
-                                ?HTML_EXPORT).
+    edown_lib:export(t_utype_elem(E) ++ local_defs(Ds, Opts), Opts).
 
 package(E=#xmlElement{name = package, content = Es}, Options) ->
     Opts = init_opts(E, Options),
@@ -1080,7 +1080,7 @@ package(E=#xmlElement{name = package, content = Es}, Options) ->
 	    ++ FullDesc),
     %% XML = xhtml(Title, stylesheet(Opts), Body),
     XML = markdown(Title, stylesheet(Opts), Body),
-    xmerl:export_simple_content(XML, ?HTML_EXPORT).
+    edown_lib:export(XML, Options).
 
 overview(E=#xmlElement{name = overview, content = Es}, Options) ->
     Opts = init_opts(E, Options),
@@ -1143,6 +1143,10 @@ ot_type([#xmlElement{name = nonempty_list, content = Es}]) ->
     ot_nonempty_list(Es);
 ot_type([#xmlElement{name = tuple, content = Es}]) ->
     ot_tuple(Es);
+ot_type([#xmlElement{name = map, content = Es}]) ->
+    ot_map(Es);
+ot_type([#xmlElement{name = map_field, content = Es}]) ->
+    ot_map_field(Es);
 ot_type([#xmlElement{name = 'fun', content = Es}]) ->
     ot_fun(Es);
 ot_type([#xmlElement{name = record, content = Es}]) ->
@@ -1199,10 +1203,23 @@ ot_nonempty_list(Es) ->
 ot_tuple(Es) ->
     {type,0,tuple,[ot_utype_elem(E) || E <- Es]}.
 
+ot_map(Es) ->
+    {type,0,map,[ot_utype_elem(E) || E <- Es]}.
+
+ot_map_field(Es) ->
+    {type,0,map_field_assoc,[ot_utype_elem(E) || E <- Es]}.
+
+
 ot_fun(Es) ->
     Range = ot_utype(get_elem(type, Es)),
     Args = [ot_utype_elem(A) || A <- get_content(argtypes, Es)],
     {type,0,'fun',[{type,0,product,Args},Range]}.
+
+t_map(Es) ->
+    ["#{"] ++ seq(fun t_utype_elem/1, Es, ["}"]).
+
+t_map_field([K,V]) ->
+    t_utype_elem(K) ++ [" => "] ++ t_utype_elem(V).
 
 ot_record(Es) ->
     {type,0,record,[ot_type(get_elem(atom, Es)) |
@@ -1245,15 +1262,16 @@ ot_name([E]) ->
 
 get_first_sentence([#xmlElement{name = p, content = Es} | Tail]) ->
     %% Descend into initial paragraph.
+    Tail1 = drop_empty_lines(Tail),
     {First, Rest} = get_first_sentence_1(Es),
     {First,
-     [#xmlElement{name = p, content = Rest} || Rest =/= []] ++ Tail};
+     [#xmlElement{name = p, content = Rest} || Rest =/= []] ++ Tail1};
 get_first_sentence(Es) ->
     get_first_sentence_1(Es).
 
 get_first_sentence_1(Es) ->
     get_first_sentence_1(Es, []).
-    
+
 get_first_sentence_1([E = #xmlText{value = Txt} | Es], Acc) ->
     Last = case Es of
 	       [#xmlElement{name = p} | _] -> true;
@@ -1267,7 +1285,8 @@ get_first_sentence_1([E = #xmlText{value = Txt} | Es], Acc) ->
 	     if Rest == [] ->
 		     Es;
 		true ->
-		     [#xmlText{value=Rest} | Es]
+		     [#xmlText{value=trim_leading_lines(
+				       normalize_text(Rest))} | Es]
 	     end};
 	none ->
 	    get_first_sentence_1(Es, [E | Acc])
@@ -1275,8 +1294,10 @@ get_first_sentence_1([E = #xmlText{value = Txt} | Es], Acc) ->
 get_first_sentence_1([E | Es], Acc) ->
     % Skip non-text segments - don't descend further
     get_first_sentence_1(Es, [E | Acc]);
+get_first_sentence_1([], []) ->
+    {[], []};
 get_first_sentence_1([], Acc) ->
-    {lists:reverse(Acc), []}.
+    {{p, lists:reverse(Acc)}, []}.
 
 end_of_sentence(Cs, Last) ->
     end_of_sentence(Cs, Last, []).
@@ -1300,3 +1321,21 @@ end_of_sentence_1(C, Cs, true, As) ->
     {value, lists:reverse([C | As]), Cs};
 end_of_sentence_1(_, _, false, _) ->
     none.
+
+drop_empty_lines([#xmlText{value = Txt}=H|T]) ->
+    case trim_leading_lines(normalize_text(Txt)) of
+	[] ->
+	    drop_empty_lines(T);
+	Rest ->
+	    [H#xmlText{value = Rest}|T]
+    end;
+drop_empty_lines([H|T]) when is_list(H) ->
+    drop_empty_lines(H ++ T);
+drop_empty_lines(L) ->
+    L.
+
+trim_leading_lines([H|T]) when H==$\n; H==$\t; H==$\s ->
+    trim_leading_lines(T);
+trim_leading_lines(Str) ->
+    Str.
+

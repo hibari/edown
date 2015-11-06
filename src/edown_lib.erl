@@ -1,5 +1,5 @@
 %%==============================================================================
-%% Copyright 2010 Erlang Solutions Ltd.
+%% Copyright 2014 Ulf Wiger
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -13,8 +13,8 @@
 %% See the License for the specific language governing permissions and
 %% limitations under the License.
 %%==============================================================================
-%% @author Ulf Wiger <ulf.wiger@erlang-solutions.com>
-%% @copyright 2010 Erlang Solutions Ltd 
+%% @author Ulf Wiger <ulf@wiger.net>
+%% @copyright 2014 Ulf Wiger
 %% @end
 %% =====================================================================
 
@@ -23,14 +23,18 @@
 
 -module(edown_lib).
 
--export([export/1, redirect_uri/1, get_attrval/2]).
+-export([export/2, redirect_uri/1, get_attrval/2]).
 
 -include_lib("xmerl/include/xmerl.hrl").
 
+-define(HTML_EXPORT, edown_xmerl).
+-define(DEFAULT_XML_EXPORT, ?HTML_EXPORT).
 
-export(Data) ->
-    xmerl:export_simple_content(Data, edown_xmerl).
+export(Data, Options) ->
+    xmerl:export_simple(Data, export_module(Options)).
 
+export_module(Options) ->
+    proplists:get_value(xml_export, Options, ?DEFAULT_XML_EXPORT).
 
 redirect_uri(#xmlElement{} = E) ->
     redirect_uri(get_attrval(href, E), get_attrval(name, E), E);
@@ -65,7 +69,7 @@ redirect_uri(Href, _Name, E) ->
     case lists:member("/", Href) of
 	false ->
 	    [_|_] = URI = get_attrval(href, E),
-	    NewURI = re:replace(URI,".html",".md",[{return,list}]),
+	    NewURI = re:replace(URI,".html",".md",[{return,list},unicode]),
 	    replace_uri(NewURI, E);
 	true ->
 	    false
